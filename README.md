@@ -1,4 +1,4 @@
-# NAME OF OUR PROJECT 👋
+# NAME OF OUR PROJECT 
 
 Combine financial services with data and technology to foster sustainable city habits. This track focuses on creating solutions that measure and incentivize efficient resource use.
 
