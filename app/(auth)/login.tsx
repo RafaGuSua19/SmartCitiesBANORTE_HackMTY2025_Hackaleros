@@ -25,7 +25,7 @@ export default function LoginScreen() {
 
       // Si el usuario existe, redirige a success
       if (userCredential.user) {
-        router.replace("/(auth)/success");
+        router.replace("../friends");
       }
     } catch (error: any) {
       // Manejo de errores comunes

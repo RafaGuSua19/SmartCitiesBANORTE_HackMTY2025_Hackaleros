@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useState } from "react";
 import {
     ActivityIndicator,
@@ -9,42 +10,65 @@ import {
     TextInput,
     View,
 } from "react-native";
-import { auth } from "../../scripts/firebase";
+import { auth, db } from "../../scripts/firebase";
 
 export default function RegisterScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
 
   const onRegister = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Ingresa email y contraseña");
+    if (!email || !password || !username) {
+      Alert.alert("Error", "Completa todos los campos requeridos");
       return;
     }
 
+    const usernameLower = username.trim().toLowerCase();
     setLoading(true);
-    setStatus("Creando cuenta...");
+    setStatus("Verificando username...");
 
     try {
-      // 1️⃣ Crear usuario en Firebase Auth
+      // 1️⃣ Checa que el username sea único
+      const unameRef = doc(db, "usernames", usernameLower);
+      const unameSnap = await getDoc(unameRef);
+      if (unameSnap.exists()) {
+        setLoading(false);
+        Alert.alert("Error", "El username ya está en uso. Prueba otro.");
+        return;
+      }
+
+      setStatus("Creando cuenta...");
+
+      // 2️⃣ Crear usuario en Auth
       const cred = await createUserWithEmailAndPassword(
         auth,
         email.trim(),
         password
       );
 
-      // 2️⃣ Asignar displayName (opcional)
+      // 3️⃣ Asignar displayName (opcional)
       if (displayName) {
         await updateProfile(cred.user, { displayName });
       }
 
-      // 3️⃣ Asumir éxito y mostrar mensaje
-      setStatus("Registro exitoso");
+      // 4️⃣ Reservar username y crear perfil en Firestore
+      await setDoc(unameRef, { uid: cred.user.uid });
+      await setDoc(doc(db, "users", cred.user.uid), {
+        uid: cred.user.uid,
+        email: cred.user.email,
+        displayName: displayName || "",
+        username,
+        usernameLower,
+        photoURL: cred.user.photoURL || null,
+        createdAt: serverTimestamp(),
+      });
 
-      // 4️⃣ Redirigir a la pantalla de éxito
+      setStatus("Registro exitoso ✅");
+
       setTimeout(() => {
         router.replace("/(auth)/success");
       }, 1000);
@@ -77,6 +101,17 @@ export default function RegisterScreen() {
         placeholder="Nombre (opcional)"
         onChangeText={setDisplayName}
         value={displayName}
+        style={{
+          borderWidth: 1,
+          padding: 12,
+          borderRadius: 8,
+        }}
+      />
+      <TextInput
+        placeholder="Nombre de usuario (único, sin espacios)"
+        autoCapitalize="none"
+        onChangeText={setUsername}
+        value={username}
         style={{
           borderWidth: 1,
           padding: 12,
