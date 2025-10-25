@@ -19,24 +19,40 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'Inicio',
           tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={24}></Ionicons>,
         }}
       />
       <Tabs.Screen
         name="friends"
         options={{
-          title: 'Friends',
+          title: 'Amigos',
           tabBarIcon: ({ color }) => <Ionicons name="people-outline" size={24}></Ionicons>,
         }}
       />
       <Tabs.Screen
-        name="tips"
+        name="goals"
         options={{
-          title: 'Tip',
-          tabBarIcon: ({ color }) => <Ionicons name="bulb-outline" size={24} color="black" />,
+          title: 'Metas',
+          tabBarIcon: ({ color }) => <Ionicons name="star-outline" size={24} color="black" />,
         }}
       />
+      <Tabs.Screen
+        name="ranking"
+        options={{
+          title: 'Ranking',
+          tabBarIcon: ({ color }) => <Ionicons name="trophy-outline" size={24} color="black" />,
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Config',
+          tabBarIcon: ({ color }) => <Ionicons name="settings-outline" size={24} color="black" />,
+        }}
+      />
+
+
     </Tabs>
   );
 }
