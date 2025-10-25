@@ -1,4 +1,3 @@
-// app/(auth)/login.tsx
 import { useRouter } from "expo-router";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { useState } from "react";
@@ -8,19 +7,35 @@ import { auth } from "../../scripts/firebase";
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const router = useRouter(); // ✅ ESTA LÍNEA ES LA CLAVE
+  const router = useRouter();
 
   const onLogin = async () => {
     if (!email || !password) {
       Alert.alert("Error", "Ingresa email y contraseña");
       return;
     }
+
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      Alert.alert("Listo", "Inicio de sesión exitoso");
-      // Ejemplo: router.replace("/explore"); // luego rediriges al home
-    } catch (e: any) {
-      Alert.alert("Error", e?.message ?? "No se pudo iniciar sesión");
+      // Intenta iniciar sesión
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email.trim(),
+        password
+      );
+
+      // Si el usuario existe, redirige a success
+      if (userCredential.user) {
+        router.replace("/(auth)/success");
+      }
+    } catch (error: any) {
+      // Manejo de errores comunes
+      if (error.code === "auth/user-not-found") {
+        Alert.alert("Error", "El usuario no existe");
+      } else if (error.code === "auth/wrong-password") {
+        Alert.alert("Error", "Contraseña incorrecta");
+      } else {
+        Alert.alert("Error", error.message ?? "No se pudo iniciar sesión");
+      }
     }
   };
 
@@ -43,8 +58,10 @@ export default function LoginScreen() {
       />
 
       <Button title="Iniciar sesión" onPress={onLogin} />
-
-      <Button title="Crear cuenta" onPress={() => router.push("/register")} />
+      <Button
+        title="Crear cuenta"
+        onPress={() => router.push("/(auth)/register")}
+      />
     </View>
   );
 }
