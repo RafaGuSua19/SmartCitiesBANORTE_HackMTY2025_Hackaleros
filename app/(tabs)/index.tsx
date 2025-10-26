@@ -5,6 +5,7 @@ import LottieView from 'lottie-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, Image, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BarChart } from "react-native-chart-kit";
+import MapView, { Marker } from 'react-native-maps';
 import * as Progress from 'react-native-progress';
 import { db } from '../../scripts/firebase'; // Ajusta la ruta
 
@@ -78,7 +79,7 @@ export default function HomeScreen() {
 
   let extraMsg = "";
   if (estadisticas && estadisticas.co2Reducido && estadisticas.co2Reducido > 0) {
-    extraMsg = `Has reducido ${estadisticas.co2Reducido} kg de CO₂ este mes 🚗🌱`;
+    extraMsg = `Has reducido ${estadisticas.co2Reducido} kg de CO₂ este mes respecto al promedio en tu zona`;
   } else if (progresoAhorro >= metaAhorro * 0.9) {
     extraMsg = "¡Estás a punto de conseguir un incentivo Banorte!";
   } else if (gastos.luz > 1000) {
@@ -241,6 +242,31 @@ export default function HomeScreen() {
             </View>
           </View>
 
+          {/* Mapa de Google con la ubicación */}
+          <View style={{ flex: 1, width: '100%', height: 400 }}>
+            <MapView
+              style={{ width: '100%', height: '100%' }}
+              region={{
+                latitude: 25.6768, // Coordenada de Monterrey
+                longitude: -100.3105, // Coordenada de Monterrey
+                latitudeDelta: 0.0922,
+                longitudeDelta: 0.0421,
+              }}
+            >
+              {/* Colorear zonas aleatorias */}
+              <Marker coordinate={{ latitude: 25.6740, longitude: -100.3120 }} pinColor="green" />
+              <Marker coordinate={{ latitude: 25.6720, longitude: -100.3080 }} pinColor="yellow" />
+              <Marker coordinate={{ latitude: 25.6700, longitude: -100.3050 }} pinColor="red" />
+            </MapView>
+          </View>
+
+          {/* Mensaje con estadísticas de emisiones */}
+          <View style={styles.messageBox}>
+            <Text style={styles.message}>
+              {extraMsg}
+            </Text>
+          </View>
+
           {/* Botón para incentivos */}
           <TouchableOpacity style={styles.incentivesBtn} activeOpacity={0.8}>
             <Text style={styles.incentivesText}>Ver incentivos</Text>
@@ -337,7 +363,7 @@ const styles = StyleSheet.create({
     fontWeight: '400'
   },
   incentivesBtn: {
-    marginTop: 8,
+    marginTop: 15,  // Aumentamos el margen superior para dar espacio
     paddingVertical: 12,
     paddingHorizontal: 28,
     backgroundColor: banorteRed,
@@ -347,7 +373,7 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.12,
     shadowRadius: 7,
-    elevation: 3
+    elevation: 3,
   },
   incentivesText: {
     color: "#fff",
@@ -397,21 +423,19 @@ const styles = StyleSheet.create({
     color: "#323E48",
     marginVertical: 2,
   },
-  footer: {
-    fontSize: 12,
-    color: "#A2A9AD",
-    textAlign: "center",
-    marginTop: 20,
-  },
-  button: {
-    backgroundColor: "#EB0029",
-    paddingVertical: 12,
+  messageBox: {
+    position: 'absolute',
+    bottom: 100,  // Ajuste el valor para darle más espacio al mensaje y evitar que se superponga
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    padding: 25,
     borderRadius: 10,
-    marginTop: 20,
+    zIndex: 10,  // Para asegurar que el mensaje esté por encima de otros componentes
   },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    textAlign: "center",
-  }
+  message: {
+    fontSize: 14,
+    color: '#323E48',
+    textAlign: 'center',
+  },
 });

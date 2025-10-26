@@ -25,7 +25,12 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "CAMERA"
-      ]
+      ],
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyApYSSZbniZW5BuGnIm9Q6_uC2gvC2ajRA"
+        }
+      }
     },
     "web": {
       "output": "static",
