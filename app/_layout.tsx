@@ -15,8 +15,8 @@ function RootLayoutContent() {
     );
   }
 
-  // 🔑 Si hay usuario → entra a las tabs
-  // 🚪 Si no hay usuario → va al login
+  // Si hay usuario → entra a las tabs
+  // Si no hay usuario → va al login
   if (!user) return <Redirect href="/(auth)/login" />;
 
   return <Redirect href="/(tabs)" />;
