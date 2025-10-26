@@ -1,210 +1,247 @@
-import Slider from "@react-native-community/slider";
-import React, { useState } from "react";
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { BarChart } from "react-native-chart-kit";
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
 
-const { width } = Dimensions.get("window");
+const PayReceiptScreen = () => {
+  const [receiptNumber, setReceiptNumber] = useState('');
+  const [serviceType, setServiceType] = useState('');
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [cvc, setCvc] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [receiptFound, setReceiptFound] = useState(false);
 
-// Datos simulados para el usuario
-const USER_DATA = {
-  nombre: "Usuario 1",
-  PromedioAcumuladoGasolina: 507.22,
-  PromedioAcumuladoLuz: 305.02,
-  PromedioAcumuladoAgua: 20.49,
-  CO2porKm: 0.18,
-  RendimientoKmL: 15.5,
-  GastoRealGasolina: 500,
-  GastoRealLuz: 200,
-  GastoRealAgua: 300,
-};
+  // Datos simulados de recibos
+  const mockData = {
+    "123456": {
+      name: "Juan Pérez",
+      serviceType: "Luz",
+      amount: 1200
+    },
+    "654321": {
+      name: "Ana Gómez",
+      serviceType: "Agua",
+      amount: 500
+    },
+    "789012": {
+      name: "Carlos Ruiz",
+      serviceType: "Gas",
+      amount: 800
+    },
+    // Agrega más recibos simulados si lo necesitas
+  };
 
-const PRECIO_LITRO_GASOLINA = 24;
-const COSTO_KWH = 2.8;
-const COSTO_M3_AGUA = 20;
-const KGCO2_POR_LITRO = 2.31;
+  // Función para obtener detalles del recibo (simulado)
+  const getReceiptDetails = async () => {
+    if (receiptNumber.length !== 6) return; // Verifica que el número de recibo tenga 6 dígitos
 
-export default function AhorroSimulador() {
-  const [ahorroGas, setAhorroGas] = useState(0);
-  const [ahorroAgua, setAhorroAgua] = useState(0);
-  const [ahorroLuz, setAhorroLuz] = useState(0);
+    setLoading(true);
+    setError(null);
+    setReceiptFound(false); // Reiniciar estado de encontrado antes de buscar
 
-  // Funciones para calcular los impactos físicos
-  const co2FromGas = (mxn: number, co2_km: number) =>
-    (mxn / PRECIO_LITRO_GASOLINA) * KGCO2_POR_LITRO * (co2_km / 0.2);
-  const kwhFromMxn = (mxn: number) => mxn / COSTO_KWH;
-  const m3FromMxn = (mxn: number) => mxn / COSTO_M3_AGUA;
+    try {
+      // Simula la búsqueda del recibo en los datos mock
+      const receipt = mockData[receiptNumber];
 
-  // Calcular los ahorros y sus impactos
-  const ahorroLuzCalc = Math.max(
-    0,
-    USER_DATA.PromedioAcumuladoLuz -
-      ((ahorroGas / USER_DATA.PromedioAcumuladoGasolina +
-        ahorroAgua / USER_DATA.PromedioAcumuladoAgua) /
-        2) *
-        USER_DATA.PromedioAcumuladoLuz
-  );
+      if (!receipt) {
+        throw new Error('Recibo no encontrado');
+      }
 
-  const co2 = co2FromGas(ahorroGas, USER_DATA.CO2porKm);
-  const kwh = kwhFromMxn(ahorroLuzCalc);
-  const aguaL = m3FromMxn(ahorroAgua) * 1000;
+      // Si el recibo es encontrado, establece los valores
+      setName(receipt.name);
+      setServiceType(receipt.serviceType);
+      setAmount(receipt.amount);
+      setReceiptFound(true); // Recibo encontrado
 
-  // Actualizamos el gráfico con los valores de ahorro
-  const chartData = {
-    labels: ["Gasolina", "Luz", "Agua"],
-    datasets: [
-      {
-        data: [ahorroGas, ahorroLuzCalc, ahorroAgua], // Asegúrate de que esto sea un arreglo de números
-      },
-    ],
+    } catch (error: any) {
+      setError(error.message || 'Hubo un problema al obtener el recibo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Llamar a getReceiptDetails cuando el número de recibo cambia
+  useEffect(() => {
+    if (receiptNumber.length === 6) {
+      getReceiptDetails();
+    }
+  }, [receiptNumber]);
+
+  // Simulación de pago (sin validación real)
+  const handleSubmit = () => {
+    if (!cardNumber || !expiryDate || !cvc) {
+      Alert.alert('Error', 'Por favor ingresa los datos de la tarjeta');
+      return;
+    }
+
+    Alert.alert('Éxito', `Pago realizado con éxito\nRecibo: ${receiptNumber}`);
+  };
+
+  // Formatear número de tarjeta en bloques de 4 dígitos
+  const formatCardNumber = (text: string) => {
+    const formatted = text.replace(/\D/g, '').match(/.{1,4}/g)?.join(' ') || '';
+    setCardNumber(formatted);
+  };
+
+  // Formatear fecha de vencimiento en MM/AA
+  const formatExpiryDate = (text: string) => {
+    const formatted = text.replace(/\D/g, '').slice(0, 4);
+    setExpiryDate(formatted.length > 2 ? `${formatted.slice(0, 2)}/${formatted.slice(2)}` : formatted);
+  };
+
+  // Función para cerrar el teclado cuando el usuario hace clic fuera de los campos de texto
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Simulador de Ahorro Sustentable</Text>
-      <Text style={styles.subtitle}>👤 {USER_DATA.nombre}</Text>
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+      >
+        {/* Logo de Banorte */}
+        <Image source={require('../../assets/images/banorte-logo.png')} style={styles.logo} />
 
-      <Text style={styles.label}>
-        Gasolina (máx {USER_DATA.PromedioAcumuladoGasolina.toFixed(0)} MXN)
-      </Text>
-      <Slider
-        minimumValue={0}
-        maximumValue={USER_DATA.PromedioAcumuladoGasolina}
-        value={ahorroGas}
-        onValueChange={setAhorroGas}
-        minimumTrackTintColor="#EB0029"
-        maximumTrackTintColor="#CFD2D3"
-        thumbTintColor="#EB0029"
-      />
-      <Text style={styles.value}>{ahorroGas.toFixed(0)} MXN</Text>
+        {/* Fondo degradado */}
+        <View style={styles.gradientBackground}>
+          <Text style={styles.title}>Pago de Recibo</Text>
 
-      <Text style={styles.label}>
-        Agua (máx {USER_DATA.PromedioAcumuladoAgua.toFixed(1)} m³)
-      </Text>
-      <Slider
-        minimumValue={0}
-        maximumValue={USER_DATA.PromedioAcumuladoAgua}
-        value={ahorroAgua}
-        onValueChange={setAhorroAgua}
-        minimumTrackTintColor="#00BCD4"
-        maximumTrackTintColor="#CFD2D3"
-        thumbTintColor="#00BCD4"
-      />
-      <Text style={styles.value}>{ahorroAgua.toFixed(1)} m³</Text>
+          {/* Número de recibo */}
+          <TextInput
+            style={styles.input}
+            placeholder="Número de recibo"
+            value={receiptNumber}
+            onChangeText={setReceiptNumber}
+            keyboardType="numeric"
+            maxLength={6} // Limitar a 6 dígitos
+          />
 
-      <Text style={styles.label}>
-        Luz (máx {USER_DATA.PromedioAcumuladoLuz.toFixed(1)} kWh)
-      </Text>
-      <Slider
-        minimumValue={0}
-        maximumValue={USER_DATA.PromedioAcumuladoLuz}
-        value={ahorroLuz}
-        onValueChange={setAhorroLuz}
-        minimumTrackTintColor="#f3db21ff"
-        maximumTrackTintColor="#d2d3cfff"
-        thumbTintColor="#f3de21ff"
-      />
-      <Text style={styles.value}>{ahorroLuz.toFixed(1)} kWh</Text>
+          {loading && <ActivityIndicator size="large" color="#fff" />}
+          
+          {/* Mostrar detalles del recibo si se encontró */}
+          {receiptFound && (
+            <View style={styles.details}>
+              <Text style={styles.text}>Nombre: {name}</Text>
+              <Text style={styles.text}>Tipo de Servicio: {serviceType}</Text>
+              <Text style={styles.text}>Monto a Pagar: ${amount}</Text>
+            </View>
+          )}
 
-      <View style={{ marginVertical: 20 }}>
-        <BarChart
-          data={chartData}
-          width={width - 40}
-          height={220}
-          yAxisLabel=""
-          yAxisSuffix=""
-          chartConfig={{
-            backgroundGradientFrom: "#fff",
-            backgroundGradientTo: "#fff",
-            decimalPlaces: 0,
-            color: () => "#EB0029",
-            labelColor: () => "#323E48",
-          }}
-          style={{
-            borderRadius: 10,
-            alignSelf: "center",
-          }}
-        />
-      </View>
+          {/* Si no se encontró el recibo, mostrar mensaje de error */}
+          {error && <Text style={styles.errorText}>{error}</Text>}
 
-      <View style={styles.infoBox}>
-        <Text style={styles.info}>
-          💨 CO₂ evitado: {co2.toFixed(2)} kg
-        </Text>
-        <Text style={styles.info}>
-          ⚡ Energía evitada: {kwh.toFixed(1)} kWh
-        </Text>
-        <Text style={styles.info}>
-          💧 Agua evitada: {aguaL.toFixed(0)} L
-        </Text>
-      </View>
+          {/* Datos de la tarjeta */}
+          <TextInput
+            style={styles.input}
+            placeholder="Número de tarjeta (16 dígitos)"
+            value={cardNumber}
+            onChangeText={formatCardNumber}
+            keyboardType="numeric"
+            maxLength={19} // Permitir 16 dígitos con espacios
+          />
 
-      <Text style={styles.footer}>
-        Los cálculos se actualizan en tiempo real conforme ajustas los sliders.
-      </Text>
+          {/* Fecha de vencimiento */}
+          <TextInput
+            style={styles.input}
+            placeholder="Fecha de vencimiento (MM/AA)"
+            value={expiryDate}
+            onChangeText={formatExpiryDate}
+            keyboardType="numeric"
+            maxLength={5} // Formato MM/AA
+          />
 
-      <TouchableOpacity style={styles.button}>
-        <Text style={styles.buttonText}>Ver incentivos</Text>
-      </TouchableOpacity>
-    </ScrollView>
+          <TextInput
+            style={styles.input}
+            placeholder="CVC"
+            value={cvc}
+            onChangeText={setCvc}
+            keyboardType="numeric"
+            maxLength={3}
+          />
+
+          {/* Botón de pago */}
+          {loading ? (
+            <ActivityIndicator size="large" color="#fff" />
+          ) : (
+            <TouchableOpacity style={styles.button} onPress={handleSubmit}>
+              <Text style={styles.buttonText}>Pagar Recibo</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F6F6F6",
-    padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
   },
-  title: {
-    fontSize: 22,
-    color: "#EB0029",
-    fontFamily: "Gotham-Medium",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#5B6670",
-    textAlign: "center",
+  logo: {
+    width: 250,
+    height: 66,
+    resizeMode: 'contain',
     marginBottom: 20,
   },
-  label: {
-    fontSize: 15,
-    color: "#323E48",
-    fontFamily: "Gotham-Medium",
-    marginTop: 10,
-  },
-  value: {
-    fontSize: 14,
-    color: "#5B6670",
-    marginBottom: 10,
-  },
-  infoBox: {
-    backgroundColor: "#FFFFFF",
+  gradientBackground: {
+    width: '100%',
+    backgroundColor: 'linear-gradient(45deg, #D92D2B, #A71D1D)', // Fondo degradado rojo de Banorte
+    padding: 20,
     borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 20,
+  },
+  input: {
+    width: '80%',
     padding: 15,
-    elevation: 2,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderRadius: 5,
+    borderColor: '#ddd',
+    fontSize: 16,
+    backgroundColor: '#fff',
   },
-  info: {
-    fontSize: 14,
-    color: "#323E48",
-    marginVertical: 2,
+  details: {
+    marginBottom: 20,
+    padding: 15,
+    backgroundColor: '#f7f7f7',
+    borderRadius: 5,
+    width: '80%',
   },
-  footer: {
-    fontSize: 12,
-    color: "#A2A9AD",
-    textAlign: "center",
-    marginTop: 20,
+  text: {
+    fontSize: 16,
+    marginBottom: 5,
+    color: '#333',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
+    marginBottom: 15,
   },
   button: {
-    backgroundColor: "#EB0029",
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginTop: 20,
+    width: '80%',
+    padding: 15,
+    backgroundColor: '#D92D2B', // Rojo de Banorte
+    borderRadius: 5,
+    alignItems: 'center',
   },
   buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    textAlign: "center",
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: 'bold',
   },
 });
+
+export default PayReceiptScreen;
