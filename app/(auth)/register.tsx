@@ -2,12 +2,14 @@ import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Button,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
 import { auth } from "../../scripts/firebase";
 
@@ -29,25 +31,22 @@ export default function RegisterScreen() {
     setStatus("Creando cuenta...");
 
     try {
-      // 1️⃣ Crear usuario en Firebase Auth
+  
       const cred = await createUserWithEmailAndPassword(
         auth,
         email.trim(),
         password
       );
 
-      // 2️⃣ Asignar displayName (opcional)
+
       if (displayName) {
         await updateProfile(cred.user, { displayName });
       }
 
-      // 3️⃣ Asumir éxito y mostrar mensaje
+
       setStatus("Registro exitoso");
 
-      // 4️⃣ Redirigir a la pantalla de éxito
-      setTimeout(() => {
-        router.replace("/(auth)/success");
-      }, 1000);
+    
     } catch (error: any) {
       console.error("❌ Error de registro:", error);
       if (error.code === "auth/email-already-in-use") {
@@ -64,60 +63,106 @@ export default function RegisterScreen() {
     }
   };
 
-  return (
-    <View
-      style={{
-        flex: 1,
-        gap: 12,
-        padding: 16,
-        justifyContent: "center",
-      }}
-    >
+   return (
+    <View style={styles.container}>
+      <Image
+        source={require("../../assets/images/Logo.png")}
+        style={styles.logo}
+        resizeMode="contain"
+      />
+
+      <Text style={styles.title}>Crea tu cuenta</Text>
+      <Text style={styles.subtitle}>Regístrate para continuar</Text>
+
       <TextInput
         placeholder="Nombre (opcional)"
-        onChangeText={setDisplayName}
+        placeholderTextColor="#5B6670"
         value={displayName}
-        style={{
-          borderWidth: 1,
-          padding: 12,
-          borderRadius: 8,
-        }}
+        onChangeText={setDisplayName}
+        style={styles.input}
       />
       <TextInput
-        placeholder="Correo"
-        autoCapitalize="none"
+        placeholder="Correo electrónico"
+        placeholderTextColor="#5B6670"
         keyboardType="email-address"
-        onChangeText={setEmail}
+        autoCapitalize="none"
         value={email}
-        style={{
-          borderWidth: 1,
-          padding: 12,
-          borderRadius: 8,
-        }}
+        onChangeText={setEmail}
+        style={styles.input}
       />
       <TextInput
         placeholder="Contraseña"
+        placeholderTextColor="#5B6670"
         secureTextEntry
-        onChangeText={setPassword}
         value={password}
-        style={{
-          borderWidth: 1,
-          padding: 12,
-          borderRadius: 8,
-        }}
+        onChangeText={setPassword}
+        style={styles.input}
       />
 
       {loading ? (
-        <ActivityIndicator size="large" color="#EB0029" />
+        <ActivityIndicator color="#EB0029" />
       ) : (
-        <Button title="Crear cuenta" onPress={onRegister} />
+        <TouchableOpacity style={styles.primaryButton} onPress={onRegister}>
+          <Text style={styles.primaryButtonText}>Crear cuenta</Text>
+        </TouchableOpacity>
       )}
 
-      {status ? (
-        <Text style={{ textAlign: "center", color: "gray", marginTop: 10 }}>
-          {status}
-        </Text>
-      ) : null}
+      <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
+        <Text style={styles.link}>¿Ya tienes cuenta? Inicia sesión</Text>
+      </TouchableOpacity>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "white",
+    paddingHorizontal: 25,
+    justifyContent: "center",
+  },
+  logo: {
+    width: 220,
+    height: 80,
+    alignSelf: "center",
+    marginBottom: 30,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#323E48",
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: "#5B6670",
+    marginBottom: 30,
+    
+  },
+  input: {
+    backgroundColor: "#F6F6F6",
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 15,
+    fontSize: 15,
+    color: "#323E48",
+  },
+  primaryButton: {
+    backgroundColor: "#EB0029",
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 5,
+  },
+  primaryButtonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  link: {
+    marginTop: 20,
+    textAlign: "center",
+    color: "#DB0026",
+    fontWeight: "500",
+  },
+});

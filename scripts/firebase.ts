@@ -1,8 +1,8 @@
-// scripts/firebase.ts
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getApp, getApps, initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { Auth, browserLocalPersistence, getAuth, inMemoryPersistence, setPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
-
+import { Platform } from "react-native";
 const firebaseConfig = {
   apiKey: "AIzaSyC8PA-QETCZnmPbs56N3KayLO6wbug4O84",
   authDomain: "smart-city-app-3aa2d.firebaseapp.com",
@@ -13,9 +13,34 @@ const firebaseConfig = {
   measurementId: "G-X334124BTJ"
 };
 
-// ✅ Asegura inicialización única (evita errores 'duplicate-app')
+// ✅ Evita inicializar más de una app
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-// ✅ Instancias únicas y correctamente configuradas
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+
+
+let auth: Auth;
+
+if (Platform.OS === "web") {
+  auth = getAuth(app);
+  setPersistence(auth, browserLocalPersistence);
+} else {
+  try {
+    // Solo funcionará si tu Firebase soporta la API nativa
+    const { initializeAuth, getReactNativePersistence } = require("firebase/auth/react-native");
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch (error) {
+    // Si no existe "firebase/auth/react-native", usamos fallback
+    auth = getAuth(app);
+    setPersistence(auth, inMemoryPersistence);
+    console.warn("⚠️ Persistencia nativa no disponible, usando memoria temporal.");
+  }
+}
+
+// 🔥 Base de datos Firestore
+const db = getFirestore(app);
+
+export { app, auth, db };
+

@@ -1,25 +1,26 @@
 import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Button,
-    FlatList,
-    Text,
-    TextInput,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { auth, db } from "../../scripts/firebase";
 import {
-    acceptFriendRequest,
-    getMyFriends,
-    getUserProfile,
-    searchUsersByUsernamePrefix,
-    sendFriendRequest,
-    subscribeIncomingRequests,
+  acceptFriendRequest,
+  getMyFriends,
+  getUserProfile,
+  searchUsersByUsernamePrefix,
+  sendFriendRequest,
+  subscribeIncomingRequests,
 } from "../../scripts/friends";
 
-// Componente para mostrar perfil de quien te envió la solicitud
+// 🧩 Item de solicitud de amistad
 function FriendRequestItem({ item, onAccept }: any) {
   const [profile, setProfile] = useState<any>(null);
 
@@ -31,22 +32,22 @@ function FriendRequestItem({ item, onAccept }: any) {
   }, [item.fromUid]);
 
   return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        paddingVertical: 6,
-      }}
-    >
-      <Text>
-        De: {profile?.displayName || ""} @{profile?.username || item.fromUid}
+    <View style={styles.requestCard}>
+      <Text style={styles.friendText}>
+        <Text style={{ fontWeight: "700" }}>
+          {profile?.displayName || "Usuario"}{" "}
+        </Text>
+        @{profile?.username || item.fromUid}
       </Text>
-      <Button title="Aceptar" color="#25bc3c" onPress={onAccept} />
+
+      <TouchableOpacity style={styles.acceptButton} onPress={onAccept}>
+        <Text style={styles.acceptButtonText}>Aceptar</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
+// 🧩 Pantalla principal
 export default function FriendsScreen() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
@@ -55,8 +56,8 @@ export default function FriendsScreen() {
   const [friends, setFriends] = useState<any[]>([]);
   const [profiles, setProfiles] = useState<{ [uid: string]: any }>({});
 
-  // Buscar usuarios
   const doSearch = async () => {
+    if (!query.trim()) return;
     setLoading(true);
     try {
       const found = await searchUsersByUsernamePrefix(query);
@@ -68,17 +69,14 @@ export default function FriendsScreen() {
     }
   };
 
-  // Suscribirse a solicitudes recibidas (actualización en tiempo real)
   useEffect(() => {
     const unsub = subscribeIncomingRequests(setRequests);
     return unsub;
   }, []);
 
-  // Listar amigos y perfiles básicos
   const refreshFriends = async () => {
     const friendUids = await getMyFriends();
     setFriends(friendUids);
-    // Cargar perfiles básicos
     let profs: any = {};
     for (let uid of friendUids) {
       const prof = await getUserProfile(uid);
@@ -91,56 +89,44 @@ export default function FriendsScreen() {
     refreshFriends();
   }, []);
 
-  // Elimina solicitud localmente de la lista (sin esperar al snapshot)
   const removeRequestLocally = (id: string) => {
     setRequests((prev) => prev.filter((r) => r.id !== id));
   };
 
   return (
-    <View style={{ flex: 1, padding: 16, gap: 16 }}>
-      <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 10 }}>Amigos</Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>Amigos</Text>
 
-      {/* Buscador */}
-      <View style={{ flexDirection: "row", gap: 8, marginBottom: 12 }}>
+      {/* 🔎 Buscador */}
+      <View style={styles.searchRow}>
         <TextInput
           placeholder="Buscar por username"
+          placeholderTextColor="#5B6670"
           value={query}
           onChangeText={setQuery}
-          style={{
-            flex: 1,
-            borderWidth: 1,
-            borderRadius: 8,
-            padding: 10,
-          }}
+          style={styles.input}
         />
-        <Button title="Buscar" onPress={doSearch} />
+        <TouchableOpacity style={styles.searchButton} onPress={doSearch}>
+          <Text style={styles.searchButtonText}>Buscar</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Resultados de búsqueda */}
-      {loading ? (
-        <ActivityIndicator size="small" color="#EB0029" />
-      ) : (
-        results.length > 0 && (
+      {loading && <ActivityIndicator color="#EB0029" />}
+
+      {/* 🔍 Resultados de búsqueda */}
+      {results.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Resultados</Text>
           <FlatList
             data={results}
             keyExtractor={(item) => item.uid}
             renderItem={({ item }) => (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  paddingVertical: 6,
-                  borderBottomWidth: 0.5,
-                  borderColor: "#ccc",
-                }}
-              >
-                <Text>
+              <View style={styles.userCard}>
+                <Text style={styles.friendText}>
                   {item.displayName || "(Sin nombre)"} {"  "} @{item.username}
                 </Text>
-                <Button
-                  title="Agregar"
-                  color="#EB0029"
+                <TouchableOpacity
+                  style={styles.addButton}
                   onPress={async () => {
                     try {
                       await sendFriendRequest(item.uid);
@@ -149,56 +135,152 @@ export default function FriendsScreen() {
                       Alert.alert("Error", e.message || "No se pudo enviar solicitud");
                     }
                   }}
-                />
+                >
+                  <Text style={styles.addButtonText}>Agregar</Text>
+                </TouchableOpacity>
               </View>
             )}
           />
-        )
+        </View>
       )}
 
-      {/* Solicitudes de amistad */}
-      <Text style={{ fontWeight: "bold", marginTop: 18, fontSize: 18 }}>Solicitudes recibidas:</Text>
-      {requests.length === 0 && <Text style={{ color: "#777" }}>No tienes solicitudes nuevas.</Text>}
-      <FlatList
-        data={requests}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <FriendRequestItem
-            item={item}
-            onAccept={async () => {
-              try {
-                await acceptFriendRequest(item);
-              } catch (e) {
-                // Ignorar error, mostrar siempre éxito visual
-              }
-              Alert.alert("¡Ahora son amigos! 🎉");
-              await refreshFriends();
-              removeRequestLocally(item.id);
-            }}
-          />
-        )}
-      />
+      {/* 📥 Solicitudes recibidas */}
+      <Text style={styles.sectionTitle}>Solicitudes recibidas</Text>
+      {requests.length === 0 ? (
+        <Text style={styles.emptyText}>No tienes solicitudes nuevas.</Text>
+      ) : (
+        <FlatList
+          data={requests}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <FriendRequestItem
+              item={item}
+              onAccept={async () => {
+                try {
+                  await acceptFriendRequest(item);
+                } catch {}
+                Alert.alert("¡Ahora son amigos! 🎉");
+                await refreshFriends();
+                removeRequestLocally(item.id);
+              }}
+            />
+          )}
+        />
+      )}
 
-      {/* Lista de amigos */}
-      <Text style={{ fontWeight: "bold", marginTop: 18, fontSize: 18 }}>Tus amigos:</Text>
-      {friends.length === 0 && <Text style={{ color: "#777" }}>Aún no tienes amigos agregados.</Text>}
-      <FlatList
-        data={friends}
-        keyExtractor={(uid) => uid}
-        renderItem={({ item }) => (
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              paddingVertical: 6,
-            }}
-          >
-            <Text>
-              {profiles[item]?.displayName || ""} @{profiles[item]?.username || item}
-            </Text>
-          </View>
-        )}
-      />
+      {/* 👥 Lista de amigos */}
+      <Text style={styles.sectionTitle}>Tus amigos</Text>
+      {friends.length === 0 ? (
+        <Text style={styles.emptyText}>Aún no tienes amigos agregados.</Text>
+      ) : (
+        <FlatList
+          data={friends}
+          keyExtractor={(uid) => uid}
+          renderItem={({ item }) => (
+            <View style={styles.userCard}>
+              <Text style={styles.friendText}>
+                <Text style={{ fontWeight: "700" }}>
+                  {profiles[item]?.displayName || ""}
+                </Text>{" "}
+                @{profiles[item]?.username || item}
+              </Text>
+            </View>
+          )}
+        />
+      )}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "white",
+    padding: 16,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#323E48",
+    marginBottom: 20,
+  },
+  searchRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 10,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: "#F6F6F6",
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 15,
+    color: "#323E48",
+  },
+  searchButton: {
+    backgroundColor: "#EB0029",
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    justifyContent: "center",
+  },
+  searchButtonText: {
+    color: "white",
+    fontWeight: "600",
+  },
+  section: {
+    marginTop: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#323E48",
+    marginVertical: 8,
+  },
+  requestCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#F6F6F6",
+    borderRadius: 10,
+    padding: 12,
+    marginVertical: 5,
+    alignItems: "center",
+  },
+  userCard: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#F6F6F6",
+    borderRadius: 10,
+    padding: 12,
+    marginVertical: 5,
+    alignItems: "center",
+  },
+  friendText: {
+    color: "#323E48",
+    fontSize: 15,
+  },
+  addButton: {
+    backgroundColor: "#EB0029",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  addButtonText: {
+    color: "white",
+    fontWeight: "600",
+  },
+  acceptButton: {
+    backgroundColor: "#25bc3c",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  acceptButtonText: {
+    color: "white",
+    fontWeight: "600",
+  },
+  emptyText: {
+    color: "#777",
+    fontSize: 14,
+    marginBottom: 10,
+  },
+});
