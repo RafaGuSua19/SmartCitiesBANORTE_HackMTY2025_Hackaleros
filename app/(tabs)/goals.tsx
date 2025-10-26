@@ -165,7 +165,7 @@ const Header: React.FC<{ current: number; total: number }> = ({
 );
 
 export default function GoalPath() {
-  const [progress] = useState(0);
+  const [progress] = useState(1);
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
 

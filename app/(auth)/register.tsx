@@ -34,7 +34,7 @@ export default function RegisterScreen() {
     setStatus("Verificando username...");
 
     try {
-      // 1️⃣ Verifica que el username sea único
+      // Verifica que el username sea único
       const unameRef = doc(db, "usernames", usernameLower);
       const unameSnap = await getDoc(unameRef);
       if (unameSnap.exists()) {
@@ -45,22 +45,22 @@ export default function RegisterScreen() {
 
       setStatus("Creando cuenta...");
 
-      // 2️⃣ Crea el usuario en Auth
+      // Crea el usuario en Auth
       const cred = await createUserWithEmailAndPassword(
         auth,
         email.trim(),
         password
       );
 
-      // 3️⃣ Asigna displayName en Auth
+      // Asigna displayName en Auth
       if (displayName) {
         await updateProfile(cred.user, { displayName });
       }
 
-      // 4️⃣ Reserva el username
+      // Reserva el username
       await setDoc(unameRef, { uid: cred.user.uid });
 
-      // 5️⃣ Guarda el perfil del usuario en Firestore
+      // Guarda el perfil del usuario en Firestore
       await setDoc(doc(db, "users", cred.user.uid), {
         uid: cred.user.uid,
         email: cred.user.email,
@@ -74,10 +74,7 @@ export default function RegisterScreen() {
       setStatus("Registro exitoso ");
       Alert.alert("Cuenta creada", "Tu perfil se ha guardado correctamente.");
 
-      // 6️⃣ Redirige al inicio o a login
-      setTimeout(() => {
-        router.replace("/(auth)/login");
-      }, 1000);
+
     } catch (error: any) {
       console.error("❌ Error de registro:", error);
       if (error.code === "auth/email-already-in-use") {
