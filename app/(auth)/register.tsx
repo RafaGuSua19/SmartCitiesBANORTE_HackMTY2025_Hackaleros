@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -9,44 +10,74 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
-import { auth } from "../../scripts/firebase";
+import { auth, db } from "../../scripts/firebase";
 
 export default function RegisterScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
 
   const onRegister = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Ingresa email y contraseña");
+    if (!email || !password || !username) {
+      Alert.alert("Error", "Completa todos los campos requeridos");
       return;
     }
 
+    const usernameLower = username.trim().toLowerCase();
     setLoading(true);
-    setStatus("Creando cuenta...");
+    setStatus("Verificando username...");
 
     try {
-  
+      // 1️⃣ Verifica que el username sea único
+      const unameRef = doc(db, "usernames", usernameLower);
+      const unameSnap = await getDoc(unameRef);
+      if (unameSnap.exists()) {
+        setLoading(false);
+        Alert.alert("Error", "El username ya está en uso. Prueba otro.");
+        return;
+      }
+
+      setStatus("Creando cuenta...");
+
+      // 2️⃣ Crea el usuario en Auth
       const cred = await createUserWithEmailAndPassword(
         auth,
         email.trim(),
         password
       );
 
-
+      // 3️⃣ Asigna displayName en Auth
       if (displayName) {
         await updateProfile(cred.user, { displayName });
       }
 
+      // 4️⃣ Reserva el username
+      await setDoc(unameRef, { uid: cred.user.uid });
 
-      setStatus("Registro exitoso");
+      // 5️⃣ Guarda el perfil del usuario en Firestore
+      await setDoc(doc(db, "users", cred.user.uid), {
+        uid: cred.user.uid,
+        email: cred.user.email,
+        displayName: displayName || "",
+        username: username.trim(),
+        usernameLower,
+        photoURL: cred.user.photoURL || null,
+        createdAt: serverTimestamp(),
+      });
 
-    
+      setStatus("Registro exitoso ");
+      Alert.alert("Cuenta creada", "Tu perfil se ha guardado correctamente.");
+
+      // 6️⃣ Redirige al inicio o a login
+      setTimeout(() => {
+        router.replace("/(auth)/login");
+      }, 1000);
     } catch (error: any) {
       console.error("❌ Error de registro:", error);
       if (error.code === "auth/email-already-in-use") {
@@ -63,7 +94,7 @@ export default function RegisterScreen() {
     }
   };
 
-   return (
+  return (
     <View style={styles.container}>
       <Image
         source={require("../../assets/images/Logo.png")}
@@ -74,13 +105,26 @@ export default function RegisterScreen() {
       <Text style={styles.title}>Crea tu cuenta</Text>
       <Text style={styles.subtitle}>Regístrate para continuar</Text>
 
+      {/* 🧍 Nombre */}
       <TextInput
-        placeholder="Nombre (opcional)"
+        placeholder="Nombre completo (opcional)"
         placeholderTextColor="#5B6670"
-        value={displayName}
         onChangeText={setDisplayName}
+        value={displayName}
         style={styles.input}
       />
+
+      {/* 🆔 Username */}
+      <TextInput
+        placeholder="Nombre de usuario (único, sin espacios)"
+        placeholderTextColor="#5B6670"
+        autoCapitalize="none"
+        onChangeText={setUsername}
+        value={username}
+        style={styles.input}
+      />
+
+      {/* 📧 Email */}
       <TextInput
         placeholder="Correo electrónico"
         placeholderTextColor="#5B6670"
@@ -90,6 +134,8 @@ export default function RegisterScreen() {
         onChangeText={setEmail}
         style={styles.input}
       />
+
+      {/* 🔒 Password */}
       <TextInput
         placeholder="Contraseña"
         placeholderTextColor="#5B6670"
@@ -99,6 +145,7 @@ export default function RegisterScreen() {
         style={styles.input}
       />
 
+      {/* 🔄 Botón principal */}
       {loading ? (
         <ActivityIndicator color="#EB0029" />
       ) : (
@@ -107,9 +154,15 @@ export default function RegisterScreen() {
         </TouchableOpacity>
       )}
 
+      {/* 🔗 Ir al login */}
       <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
         <Text style={styles.link}>¿Ya tienes cuenta? Inicia sesión</Text>
       </TouchableOpacity>
+
+      {/* 🔄 Estado de registro */}
+      {status ? (
+        <Text style={styles.status}>{status}</Text>
+      ) : null}
     </View>
   );
 }
@@ -137,7 +190,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#5B6670",
     marginBottom: 30,
-    
   },
   input: {
     backgroundColor: "#F6F6F6",
@@ -164,5 +216,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
     color: "#DB0026",
     fontWeight: "500",
+  },
+  status: {
+    textAlign: "center",
+    color: "#5B6670",
+    marginTop: 10,
   },
 });

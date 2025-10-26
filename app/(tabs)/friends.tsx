@@ -97,7 +97,7 @@ export default function FriendsScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Amigos</Text>
 
-      {/* 🔎 Buscador */}
+
       <View style={styles.searchRow}>
         <TextInput
           placeholder="Buscar por username"
@@ -113,7 +113,7 @@ export default function FriendsScreen() {
 
       {loading && <ActivityIndicator color="#EB0029" />}
 
-      {/* 🔍 Resultados de búsqueda */}
+
       {results.length > 0 && (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Resultados</Text>
@@ -144,7 +144,7 @@ export default function FriendsScreen() {
         </View>
       )}
 
-      {/* 📥 Solicitudes recibidas */}
+
       <Text style={styles.sectionTitle}>Solicitudes recibidas</Text>
       {requests.length === 0 ? (
         <Text style={styles.emptyText}>No tienes solicitudes nuevas.</Text>
@@ -159,7 +159,7 @@ export default function FriendsScreen() {
                 try {
                   await acceptFriendRequest(item);
                 } catch {}
-                Alert.alert("¡Ahora son amigos! 🎉");
+                Alert.alert("¡Ahora son amigos! ");
                 await refreshFriends();
                 removeRequestLocally(item.id);
               }}
@@ -203,6 +203,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#323E48",
     marginBottom: 20,
+    marginTop: 20
   },
   searchRow: {
     flexDirection: "row",
