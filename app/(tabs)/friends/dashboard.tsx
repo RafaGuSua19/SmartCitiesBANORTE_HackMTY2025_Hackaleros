@@ -1,149 +1,135 @@
-import { useRouter } from "expo-router";
+import { MaterialIcons } from "@expo/vector-icons";
+import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Button, ScrollView, Text, View } from "react-native";
-import {
-    getBasicProfile,
-    getMyFriends,
-    getMySummary,
-    getPublicSummaryIfShared,
-} from "../../.././scripts/friendsDashboard";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { auth, db } from "../../../scripts/firebase";
+import { getMyFriends } from "../../../scripts/friends";
+
+const friendColor = "#EB0029";
+const youColor = "#047857";
+
+async function getSummary(uid: string) {
+  const snap = await getDoc(doc(db, "summaries", uid));
+  return snap.exists() ? { uid, ...snap.data() } : null;
+}
+async function getProfile(uid: string) {
+  const snap = await getDoc(doc(db, "users", uid));
+  return snap.exists() ? snap.data() : {};
+}
 
 export default function FriendsDashboard() {
   const [loading, setLoading] = useState(true);
   const [mySummary, setMySummary] = useState<any>(null);
-  const [friendsSummaries, setFriendsSummaries] = useState<any[]>([]);
-  const [profiles, setProfiles] = useState<{ [uid: string]: any }>({});
-  const [noSummary, setNoSummary] = useState(false);
-  const router = useRouter();
+  const [myProfile, setMyProfile] = useState<any>(null);
+  const [friends, setFriends] = useState<any[]>([]);
+  const [friendsProfiles, setFriendsProfiles] = useState<any[]>([]);
 
   useEffect(() => {
     (async () => {
       setLoading(true);
-      // 1. Mi score
-      const mine = await getMySummary();
-      if (!mine) setNoSummary(true);
+      const me = auth.currentUser?.uid!;
+      const [mine, profile] = await Promise.all([getSummary(me), getProfile(me)]);
       setMySummary(mine);
+      setMyProfile(profile);
 
-      // 2. Lista de amigos
       const friendUids = await getMyFriends();
-      // 3. Cargar summaries de amigos que comparten
-      let summaries: any[] = [];
-      let profilesTemp: any = {};
+      let arr: any[] = [];
+      let arrProf: any[] = [];
       for (let uid of friendUids) {
-        const sum = await getPublicSummaryIfShared(uid);
-        if (sum) {
-          summaries.push(sum);
-          // Pre-cargar nombre y username para mostrar en mensajes
-          profilesTemp[uid] = await getBasicProfile(uid);
-        }
+        const sum = await getSummary(uid);
+        if (sum) arr.push(sum);
+        arrProf.push(await getProfile(uid));
       }
-      setProfiles(profilesTemp);
-      setFriendsSummaries(summaries);
+      setFriends(arr);
+      setFriendsProfiles(arrProf);
       setLoading(false);
     })();
   }, []);
 
-  // Mensajes personalizados de comparativa
+  // Comparativa textual
   function renderComparatives() {
-    if (!mySummary) return null;
-    if (friendsSummaries.length === 0)
+    if (!mySummary)
       return (
-        <Text style={{ marginTop: 20, color: "#888", fontSize: 16 }}>
-          Aún no tienes amigos con quienes comparar tus logros.
-        </Text>
+        <Text style={styles.info}>Aún no registras tus ingresos/egresos del mes.</Text>
+      );
+    if (friends.length === 0)
+      return (
+        <Text style={styles.info}>Aún no tienes amigos con quienes comparar tu ahorro.</Text>
       );
 
-    let messages: string[] = [];
+    // Ranking
+    const everyone = [
+      { ...mySummary, displayName: myProfile.displayName || "Tú", color: youColor },
+      ...friends.map((f, idx) => ({
+        ...f,
+        displayName: friendsProfiles[idx]?.displayName || "Amigo",
+        color: friendColor,
+      })),
+    ].sort((a, b) => b.savingPercent - a.savingPercent);
 
-    for (let f of friendsSummaries) {
-      const friendName =
-        profiles[f.uid]?.displayName || "Amigo";
-      const friendUser =
-        profiles[f.uid]?.username ? "@" + profiles[f.uid]?.username : "";
-
-      // Energía
-      if (mySummary.energyScore != null && f.energyScore != null) {
-        if (mySummary.energyScore > f.energyScore) {
-          messages.push(
-            `¡Has reducido más tu consumo de energía que ${friendName} ${friendUser}!`
-          );
-        } else if (mySummary.energyScore < f.energyScore) {
-          messages.push(
-            `Estás por debajo del ahorro de energía de ${friendName} ${friendUser}.`
-          );
-        }
-      }
-
-      // Agua
-      if (mySummary.waterScore != null && f.waterScore != null) {
-        if (mySummary.waterScore > f.waterScore) {
-          messages.push(
-            `¡Superas a ${friendName} ${friendUser} en ahorro de agua!`
-          );
-        } else if (mySummary.waterScore < f.waterScore) {
-          messages.push(
-            `${friendName} ${friendUser} ha ahorrado más agua que tú.`
-          );
-        }
-      }
-
-      // Ahorro económico
-      if (mySummary.savingsScore != null && f.savingsScore != null) {
-        if (mySummary.savingsScore > f.savingsScore) {
-          messages.push(
-            `¡Lideras el ahorro económico sobre ${friendName} ${friendUser}!`
-          );
-        } else if (mySummary.savingsScore < f.savingsScore) {
-          messages.push(
-            `Te falta para alcanzar el ahorro de ${friendName} ${friendUser}.`
-          );
-        }
-      }
-    }
-
-    // Si no hay ningún mensaje (por falta de datos)
-    if (messages.length === 0)
-      return (
-        <Text style={{ marginTop: 20, color: "#888", fontSize: 16 }}>
-          Tus amigos aún no han registrado su resumen de ahorro.
+    return (
+      <View style={{ width: "100%" }}>
+        <Text style={styles.subtitle}>Ranking mensual de ahorro (%)</Text>
+        {everyone.map((p, i) => (
+          <View key={p.uid} style={[styles.barRow, { backgroundColor: p.color + "11" }]}>
+            <MaterialIcons
+              name={i === 0 ? "emoji-events" : "person"}
+              size={22}
+              color={p.color}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={[styles.barLabel, { color: p.color }]}>
+              {i === 0 ? "🥇 " : ""}
+              {p.displayName}
+            </Text>
+            <View style={{ flex: 1, marginLeft: 8, marginRight: 8 }}>
+              <View
+                style={{
+                  height: 8,
+                  backgroundColor: p.color,
+                  width: `${Math.min(100, Math.round(p.savingPercent))}%`,
+                  borderRadius: 4,
+                }}
+              />
+            </View>
+            <Text style={{ fontWeight: "bold", color: p.color }}>{Math.round(p.savingPercent)}%</Text>
+          </View>
+        ))}
+        <Text style={styles.info}>
+          {
+            everyone[0].uid === auth.currentUser?.uid
+              ? "¡Felicidades, vas a la cabeza este mes!"
+              : `Estás por debajo de ${everyone[0].displayName}.`
+          }
         </Text>
-      );
-
-    return messages.map((msg, idx) => (
-      <Text key={idx} style={{ marginVertical: 8, fontSize: 16 }}>
-        {msg}
-      </Text>
-    ));
+      </View>
+    );
   }
 
   return (
-    <ScrollView
-      style={{
-        flex: 1,
-        padding: 18,
-        backgroundColor: "#fff",
-      }}
-      contentContainerStyle={{ alignItems: "center" }}
-    >
-      <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 14 }}>
-        Dashboard de comparativas
-      </Text>
+    <ScrollView contentContainerStyle={{ alignItems: "center", padding: 16 }}>
+      <Text style={styles.title}>Dashboard de amigos</Text>
       {loading ? (
-        <ActivityIndicator size="large" color="#EB0029" />
-      ) : noSummary ? (
-        <View style={{ alignItems: "center", marginTop: 24 }}>
-          <Text style={{ color: "#888", fontSize: 16 }}>
-            No has registrado tu resumen de ahorro aún.
-          </Text>
-          <Button
-            title="Ir a registrar mi ahorro"
-            color="#EB0029"
-            onPress={() => router.push("./firebase")}
-          />
-        </View>
+        <ActivityIndicator size="large" color={friendColor} />
       ) : (
         renderComparatives()
       )}
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  title: { fontSize: 22, fontWeight: "bold", marginBottom: 16 },
+  info: { color: "#555", fontSize: 16, marginTop: 22, textAlign: "center" },
+  subtitle: { fontWeight: "bold", fontSize: 17, marginBottom: 6, marginTop: 10 },
+  barRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 14,
+    marginVertical: 4,
+    minWidth: "90%",
+  },
+  barLabel: { fontWeight: "bold", minWidth: 80 },
+});

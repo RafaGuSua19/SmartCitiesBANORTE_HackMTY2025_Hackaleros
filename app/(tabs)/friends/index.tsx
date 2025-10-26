@@ -1,5 +1,7 @@
 import { doc, getDoc } from "firebase/firestore";
 import { useEffect, useState } from "react";
+import FriendsDashboard from "./dashboard";
+
 import {
     ActivityIndicator,
     Alert,
@@ -199,6 +201,10 @@ export default function FriendsScreen() {
           </View>
         )}
       />
+      <View style={{ marginTop: 30 }}>
+        <FriendsDashboard />
+      </View>
     </View>
   );
+
 }
