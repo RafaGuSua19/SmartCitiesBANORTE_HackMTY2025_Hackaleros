@@ -10,6 +10,10 @@ Combine financial services with data and technology to foster sustainable city h
    ```bash
    npm install
    ```
+    ```bash
+   npm install react-native-vector-icons
+   ```
+   
 
 2. Start the app
 
